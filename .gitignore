@@ -1,0 +1,12 @@
+venv/
+.venv/
+.env
+*.json
+service-account.json
+!package.json
+*.xlsx
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
