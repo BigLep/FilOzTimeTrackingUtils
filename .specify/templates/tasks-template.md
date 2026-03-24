@@ -21,8 +21,8 @@ description: "Task list template for feature implementation"
 ## Path Conventions
 
 - **This repo (FilOz Time Tracking Utils)**: Python package at `filoz_time_tracking/` (modules and
-  `import_timing_export.py` CLI); tests only if the feature spec requests them (e.g. `tests/` at
-  repo root).
+  `import_timing_export.py` CLI); add API clients or LLM helpers alongside existing modules when
+  needed; tests only if the feature spec requests them (e.g. `tests/` at repo root).
 - **Single project (generic)**: `src/`, `tests/` at repository root
 - **Web app**: `backend/src/`, `frontend/src/`
 - **Mobile**: `api/src/`, `ios/src/` or `android/src/`

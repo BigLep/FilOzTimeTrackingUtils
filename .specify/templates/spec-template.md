@@ -8,7 +8,9 @@
 <!--
   Project context (FilOz Time Tracking Utils): Single-operator CLI utilities may use one focused P1
   user story when scope is narrow. Formal test plans are optional unless the feature explicitly
-  requests them (see constitution Principle V).
+  requests them (see constitution Principle V). Features using the Timing Web API or LLMs MUST
+  state privacy, human-in-the-loop, and mutation safety in requirements or edge cases (Principles
+  I, III, IV, VI).
 -->
 
 ## User Scenarios & Testing *(mandatory)*

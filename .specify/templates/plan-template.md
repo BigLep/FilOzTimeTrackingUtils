@@ -33,15 +33,18 @@
 
 Verify against `.specify/memory/constitution.md` (FilOz Time Tracking Utils):
 
-- **Pipeline (Principle I):** Feature fits Timing XLSX → Tracking tab append, or plan documents a
-  breaking change / new contract.
+- **Charter (Principle I):** Feature maps to billing import (XLSX → Tracking), Timing Web API
+  usage, and/or categorization assistance—or plan documents scope and any contract change.
 - **Sheet formulas (Principle II):** No duplicate Duration or other sheet-derived fields in code;
   appended rows stay `[Day, Start, End, "", Notes]` unless the constitution is amended.
-- **Safe ops (Principle III):** Bulk or external writes have preview, limits, or credential checks
-  consistent with existing CLI patterns.
+- **Safe ops (Principle III):** Sheet writes and Timing API mutations have preview, limits,
+  confirmation, or credential checks consistent with CLI patterns unless spec justifies an
+  exception.
 - **Secrets (Principle IV):** No credentials or PII in repo; new config vars appear in `.env.example`.
 - **Quality (Principle V):** Testing/review depth matches spec; default is pragmatic unless spec
   mandates tests.
+- **API / LLM (Principle VI):** Respects Timing rate limits and documents LLM data flow, provider,
+  and operator consent for third-party processing.
 
 ## Project Structure
 

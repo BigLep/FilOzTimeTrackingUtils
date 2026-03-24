@@ -2,6 +2,8 @@
 
 Convert **Timing App** Excel exports into the **Tracking** tab of the biglep time tracking Google Sheet. Only Day, Start, End, and Notes are inserted; Duration, Week Number, Duration (decimal), Year, Month Number, and Toku Invoice are calculated by the sheet.
 
+**Broader scope (in progress):** The project is also aimed at **faster categorization** of time using the **[Timing Web API](https://web.timingapp.com/llms.txt)** (time entries, projects, activity hierarchy, etc.) and optional **LLM-assisted suggestions** trained on your history—while keeping the XLSX → Tracking path for billing.
+
 ## Setup
 
 1. **Clone or create the project** and install with [uv](https://docs.astral.sh/uv/):
