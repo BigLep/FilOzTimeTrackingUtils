@@ -1,0 +1,35 @@
+---
+description: Project Development Guidelines
+globs: ["**/*"]
+alwaysApply: true
+---
+
+# FilOzTimeTrackingUtils Development Guidelines
+
+Auto-generated from all feature plans. Last updated: 2026-04-10
+
+## Active Technologies
+
+- Python `>=3.9` (repo standard via uv) + Existing `openpyxl`, `python-dotenv`; **no new HTTP client required** for the primary path. Optional future API path would add an HTTP library per constitution. (002-timing-xlsx-export)
+
+## Project Structure
+
+```text
+src/
+tests/
+```
+
+## Commands
+
+cd src [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] pytest [ONLY COMMANDS FOR ACTIVE TECHNOLOGIES][ONLY COMMANDS FOR ACTIVE TECHNOLOGIES] ruff check .
+
+## Code Style
+
+Python `>=3.9` (repo standard via uv): Follow standard conventions
+
+## Recent Changes
+
+- 002-timing-xlsx-export: Added Python `>=3.9` (repo standard via uv) + Existing `openpyxl`, `python-dotenv`; **no new HTTP client required** for the primary path. Optional future API path would add an HTTP library per constitution.
+
+<!-- MANUAL ADDITIONS START -->
+<!-- MANUAL ADDITIONS END -->

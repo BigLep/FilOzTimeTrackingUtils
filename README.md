@@ -35,6 +35,48 @@ It may also include **optional** read-focused helpers around the **[Timing Web A
 
 From the project directory with `.venv` activated, or use `uv run` so uv uses the project env automatically:
 
+### 1) Export Timing report to XLSX (new)
+
+This command automates the Timing Reports export and writes an `.xlsx` file that can be fed into the importer. It uses **TimingHelper** on your Mac (`save report` only). It does **not** use the Timing Web API and does **not** create, change, or delete time entries or projects—only reads data into a file (then the script may rewrite that file to filter rows for your project tree).
+
+**Explicit date range:**
+
+```bash
+uv run python -m filoz_time_tracking.export_timing_report \
+  --start 2026-03-10 --end 2026-04-09 \
+  --project FilOz \
+  --output ~/Desktop/filoz-2026-03-10_2026-04-09.xlsx
+```
+
+**Invoice shorthand:**
+
+```bash
+uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3
+```
+
+`--invoice 2026-3` resolves to `2026-02-10` through `2026-03-09` (inclusive). January rolls to December of the previous year.
+
+**Conflict safety:**
+
+- Use either `--invoice` **or** `--start/--end`.
+- Combining them is rejected with a clear error.
+
+**No-data behavior:**
+
+- If no rows match the project/range, the command still writes a valid workbook with headers only and reports that no entries matched.
+
+**Timeouts (`AppleEvent timed out` / -1712):**
+
+Large exports can exceed the default Apple Event deadline. This CLI wraps Timing in an AppleScript `with timeout` (default **900** seconds) and passes **`--project`** plus **`with subprojects included`** to Timing so the report matches “FilOz & subprojects” without exporting your whole library. If you still hit -1712, narrow the date range or raise the limit, for example:
+
+```bash
+uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3 --timeout 1800
+```
+
+Keep **Timing** running and responsive (no blocking dialogs) while the export runs. See [Timing AppleScript reference](https://timingapp.com/help/applescript) (`save report` / `with subprojects included`).
+
+### 2) Import XLSX into Google Sheet
+
 **Verify service account access (no rows added):**
 
 ```bash
@@ -65,9 +107,9 @@ uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --
 
 ## Monthly workflow
 
-1. In Timing App, export the month’s time entries as **Excel (XLSX)** (e.g. for the “FilOz” project).
-2. Run the script with `--dry-run` to confirm the rows look correct.
-3. Run without `--dry-run` to append to the Tracking tab.
+1. Export with CLI for explicit range or invoice shorthand, e.g. `uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3`.
+2. Run importer with `--dry-run` to confirm rows look correct.
+3. Run importer without `--dry-run` to append to the Tracking tab.
 4. Use the sheet as usual for invoicing (Monthly Pivot, Invoice Pivot, etc.).
 
 ## Column mapping

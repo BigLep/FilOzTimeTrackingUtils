@@ -10,3 +10,7 @@ dependencies = [
     "google-auth>=2.0.0",
     "python-dotenv>=1.0.0",
 ]
+
+[project.scripts]
+filoz-import-timing-export = "filoz_time_tracking.import_timing_export:main"
+filoz-export-timing-report = "filoz_time_tracking.export_timing_report:main"

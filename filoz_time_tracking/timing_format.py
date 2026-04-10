@@ -1,4 +1,8 @@
-"""Parse Timing App Excel export and yield rows with Day, Start, End, Project, Title."""
+"""Parse Timing App Excel export and yield rows with Day, Start, End, Project, Title.
+
+Expected headers match Timing's export and the `export_timing_report` CLI output:
+Start Date, End Date, Project, Title.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timedelta
