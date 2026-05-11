@@ -7,6 +7,7 @@ Automates the monthly invoicing workflow for FilOz:
 3. Runs an anomaly review — gaps, travel day billing, unusual durations.
 4. Creates a new tab in the invoices workbook by duplicating the previous month and filling in the invoice number and weekly breakdown.
 5. Downloads the invoice tab as a single-sheet XLSX file ready for upload to Toku.
+6. Audits the invoice against all historical invoices — hours cross-check, rate consistency, address and bank detail comparison.
 
 **Current scope:** Billing import and invoice tab creation. Categorisation of time entries remains in the Timing App native UI.
 
@@ -155,11 +156,11 @@ What the script does:
 - Writes each week's start date, days worked, and hours; D and E columns use the existing rate formulas
 - Updates the Invoice Totals row SUM range to match
 
-### 5) Download invoice tab as XLSX
+### 6) Download invoice tab as XLSX
 
 Exports a single invoice tab from the invoices workbook as a standalone XLSX file, ready for upload to Toku.
 
-The script copies the tab into a temporary Google Spreadsheet, exports that as XLSX via the Drive API (so you get a clean single-sheet file with all formatting intact), then deletes the temporary spreadsheet.
+The script exports the full workbook via the Drive API, then uses openpyxl to strip all sheets except the target tab — no temporary spreadsheets created, everything in memory.
 
 **Dry-run (prints steps without touching anything):**
 
@@ -177,6 +178,24 @@ uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5
 
 ```bash
 uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5 --output ~/Desktop/"biglep invoice - 2026-5.xlsx"
+```
+
+### 7) Audit invoice against history
+
+Reads all historical invoice tabs, the tracking sheet, and the downloaded XLSX to produce a structured comparison report. Designed to be fed to an LLM for independent review — the script gathers the data, the analyst does the reasoning.
+
+Sections covered: hours cross-check (invoice vs tracking sheet), rate consistency across all invoices, totals vs history, week breakdown, invoice dates, from/to addresses, and bank details (flagging any diff from the previous month).
+
+Run this after downloading the XLSX so the local file is available for the snapshot section:
+
+```bash
+uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5
+```
+
+To specify a different XLSX path:
+
+```bash
+uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Desktop/"biglep invoice - 2026-5.xlsx"
 ```
 
 ## Monthly workflow
@@ -210,7 +229,11 @@ uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5 --o
    uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5
    ```
    Saves as `biglep invoice - 2026-5.xlsx` in the current directory.
-8. Upload the XLSX to Toku manually: [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices)
+8. Audit the invoice against all historical invoices (feed output to LLM for review):
+   ```bash
+   uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5
+   ```
+9. Upload the XLSX to Toku manually: [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices)
 
 ## Column mapping
 
