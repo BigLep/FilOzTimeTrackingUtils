@@ -200,6 +200,8 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
 
 ## Monthly workflow
 
+> **Automated workflow available**: The `.claude/skills/filoz-monthly-invoice/` skill orchestrates all 9 steps below end-to-end. In a Claude Cowork or Claude Code session, just say "it's time to do the FilOz invoice for [month]" and it will run each step, pause for your review at the anomaly check and audit, and handle error cases. The steps below remain the authoritative reference for what each command does.
+
 1. Export from Timing:
    ```bash
    uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-5
