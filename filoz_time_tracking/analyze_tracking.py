@@ -44,8 +44,12 @@ def _invoice_date_range(invoice: str) -> tuple:
     return start, date(year, month, 9)
 
 
-# Keywords in Notes that indicate a travel day (case-insensitive).
-TRAVEL_KEYWORDS = ["travel", "colo", "flight", "airport", "driving to", "drove to"]
+# Keywords that, on their own, indicate a travel day (case-insensitive).
+TRAVEL_KEYWORDS = ["travel", "flight", "airport", "driving to", "drove to"]
+
+# Keywords that only indicate travel when paired with a TRAVEL_KEYWORD above.
+# e.g. "colo" alone can appear in scheduling/planning notes for future trips.
+TRAVEL_CONTEXT_KEYWORDS = ["colo"]
 
 # Per-contract: travel days should be billed as exactly this many hours.
 CONTRACT_TRAVEL_HOURS = 8.0
@@ -53,7 +57,12 @@ CONTRACT_TRAVEL_HOURS = 8.0
 
 def _is_travel_entry(notes: str) -> bool:
     lower = notes.lower()
-    return any(kw in lower for kw in TRAVEL_KEYWORDS)
+    if any(kw in lower for kw in TRAVEL_KEYWORDS):
+        return True
+    # Context keywords only count when an explicit travel word is also present
+    if any(kw in lower for kw in TRAVEL_CONTEXT_KEYWORDS):
+        return any(kw in lower for kw in TRAVEL_KEYWORDS)
+    return False
 
 
 def _load_all_records(worksheet) -> list[dict]:
