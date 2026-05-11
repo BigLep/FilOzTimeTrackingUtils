@@ -1,9 +1,13 @@
 # FilOz Time Tracking Utils
 
-Convert **Timing App** Excel exports into the **Tracking** tab of the biglep time tracking Google Sheet. Day, Start, End, and Notes are inserted directly; Duration, Week Number, Duration (decimal), Year, Month Number, and Toku Invoice are then filled automatically by copying formulas from the row above.
+Automates the monthly invoicing workflow for FilOz:
 
-**Current scope:** This project is primarily for **billing import** from Timing XLSX exports into Google Sheets.
-It may also include **optional** read-focused helpers around the **[Timing Web API](https://web.timingapp.com/llms.txt)** for data access, but categorization remains in the **Timing App native UI** (rules, suggestions, and manual workflow).
+1. Exports time entries from the Timing app into an XLSX file.
+2. Imports the XLSX into the **Tracking** tab of the biglep time tracking Google Sheet (with formula autofill).
+3. Runs an anomaly review — gaps, travel day billing, unusual durations.
+4. Creates a new tab in the invoices workbook by duplicating the previous month and filling in the invoice number and weekly breakdown.
+
+**Current scope:** Billing import and invoice tab creation. Categorisation of time entries remains in the Timing App native UI.
 
 ## Setup
 
@@ -27,8 +31,9 @@ It may also include **optional** read-focused helpers around the **[Timing Web A
 
    Copy `.env.example` to `.env` and set:
 
-   - `FILOZ_SHEET_ID` – already set to the biglep time tracking sheet ID.
+   - `FILOZ_SHEET_ID` – the biglep time tracking sheet ID.
    - `FILOZ_TRACKING_SHEET_NAME` – default `Tracking`; change if your tab name differs.
+   - `FILOZ_INVOICE_SHEET_ID` – the invoices workbook sheet ID. Also share this sheet with the service account (Editor access).
    - `GOOGLE_APPLICATION_CREDENTIALS` – path to the service account JSON file.
 
 ## Usage
@@ -113,16 +118,69 @@ After appending rows, the importer automatically fills formula columns D, F, G, 
 uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --no-autofill
 ```
 
+### 3) Analyze time tracking (anomaly review)
+
+Run after importing to catch issues before submitting the invoice:
+
+```bash
+uv run python -m filoz_time_tracking.analyze_tracking --invoice 2026-5
+```
+
+Checks performed: hours vs. rolling average, missing weekdays (with calendar-check prompt), travel day billing (contract requires 8 hrs/day), long entries (possible forgotten timer stop), sub-5-minute noise, overlapping entries, and a project breakdown.
+
+Use `--context-periods N` to change the number of prior periods used for comparison (default: 13).
+
+### 4) Create monthly invoice tab
+
+Duplicates the previous month's tab in the invoices workbook, updates the invoice number (B10), and fills in the weekly breakdown rows from the tracking sheet. The invoices spreadsheet must be shared with the service account (Editor access); set `FILOZ_INVOICE_SHEET_ID` in `.env`.
+
+**Dry-run (lists every action without touching the spreadsheet):**
+
+```bash
+uv run python -m filoz_time_tracking.create_invoice_tab --invoice 2026-5 --dry-run
+```
+
+**Run for real:**
+
+```bash
+uv run python -m filoz_time_tracking.create_invoice_tab --invoice 2026-5
+```
+
+What the script does:
+- Duplicates the previous month's tab (e.g. `2026-4`) and renames it (e.g. `2026-5`)
+- Sets B10 to the first day of the invoice month (formatted as `YYYY-M` by the sheet; all other dates derive from it via formula)
+- Reads the Tracking sheet for the period, groups entries by week (using the `WEEKNUM` and `YEAR` columns already in the sheet)
+- Inserts or deletes rows if the new invoice has a different number of weeks than the template
+- Writes each week's start date, days worked, and hours; D and E columns use the existing rate formulas
+- Updates the Invoice Totals row SUM range to match
+
 ## Monthly workflow
 
-1. Export with CLI for explicit range or invoice shorthand, e.g. `uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3`.
-2. Run importer with `--dry-run` to confirm rows look correct.
-3. Run importer without `--dry-run` to append to the Tracking tab. Formula columns D, F, G, H, I, J are filled automatically.
-4. Run the anomaly review to check for gaps, travel day billing, and anything unusual:
+1. Export from Timing:
    ```bash
-   uv run python -m filoz_time_tracking.analyze_tracking --invoice 2026-3
+   uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-5
    ```
-5. Use the sheet as usual for invoicing (Monthly Pivot, Invoice Pivot, etc.).
+2. Dry-run the import to confirm rows look correct:
+   ```bash
+   uv run python -m filoz_time_tracking.import_timing_export FilOz-2026-04-10_2026-05-09.xlsx --dry-run
+   ```
+3. Import for real (formula columns D, F, G, H, I, J autofilled):
+   ```bash
+   uv run python -m filoz_time_tracking.import_timing_export FilOz-2026-04-10_2026-05-09.xlsx
+   ```
+4. Run the anomaly review (gaps, travel day billing, unusual entries):
+   ```bash
+   uv run python -m filoz_time_tracking.analyze_tracking --invoice 2026-5
+   ```
+5. Dry-run the invoice tab creation to confirm weeks and totals look right:
+   ```bash
+   uv run python -m filoz_time_tracking.create_invoice_tab --invoice 2026-5 --dry-run
+   ```
+6. Create the invoice tab for real:
+   ```bash
+   uv run python -m filoz_time_tracking.create_invoice_tab --invoice 2026-5
+   ```
+7. Review the new tab in the invoices spreadsheet and submit.
 
 ## Column mapping
 
@@ -135,6 +193,4 @@ uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --
 
 Possible enhancements—not implemented yet; capture here so they are not lost:
 
-1. **Invoice field extraction** — Script or AI-assisted step to read the sheet (or pivot tabs) and emit the exact values needed for the external invoice (amounts, line items, period labels)—ideally deterministic from named ranges or cells.
-2. **New monthly invoice tab** — Script that creates a new sheet/tab in the **invoices** workbook from a template, keyed by **invoice date** or invoice id (e.g. `2026-4`), with correct links or formulas back to the tracking sheet.
-4. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.
+  1. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.
