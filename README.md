@@ -6,6 +6,7 @@ Automates the monthly invoicing workflow for FilOz:
 2. Imports the XLSX into the **Tracking** tab of the biglep time tracking Google Sheet (with formula autofill).
 3. Runs an anomaly review — gaps, travel day billing, unusual durations.
 4. Creates a new tab in the invoices workbook by duplicating the previous month and filling in the invoice number and weekly breakdown.
+5. Downloads the invoice tab as a single-sheet XLSX file ready for upload to Toku.
 
 **Current scope:** Billing import and invoice tab creation. Categorisation of time entries remains in the Timing App native UI.
 
@@ -19,11 +20,11 @@ Automates the monthly invoicing workflow for FilOz:
    source .venv/bin/activate   # Windows: .venv\Scripts\activate
    ```
 
-   If you don’t have uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv`).
+   If you don't have uv: `curl -LsSf https://astral.sh/uv/install.sh | sh` (or `brew install uv`).
 
 2. **Google Service Account**
 
-   - In [Google Cloud Console](https://console.cloud.google.com/), create a project (or use an existing one), enable the **Google Sheets API**, and create a **Service Account**.
+   - In [Google Cloud Console](https://console.cloud.google.com/), create a project (or use an existing one), enable the **Google Sheets API** and the **Google Drive API**, and create a **Service Account**.
    - Download the JSON key and save it somewhere safe (e.g. `~/.config/filoz-time-tracking/sa.json`).
    - Share the [biglep time tracking](https://docs.google.com/spreadsheets/d/1DXOSegKaVjzzmQr1SbLO3tWP_QQVg0M8kUo5Msvw8TU/edit) sheet with the service account email (e.g. `xxx@yyy.iam.gserviceaccount.com`) and give it **Editor** access.
 
@@ -72,7 +73,7 @@ uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3
 
 **Timeouts (`AppleEvent timed out` / -1712):**
 
-Large exports can exceed the default Apple Event deadline. This CLI wraps Timing in an AppleScript `with timeout` (default **900** seconds) and passes **`--project`** plus **`with subprojects included`** to Timing so the report matches “FilOz & subprojects” without exporting your whole library. If you still hit -1712, narrow the date range or raise the limit, for example:
+Large exports can exceed the default Apple Event deadline. This CLI wraps Timing in an AppleScript `with timeout` (default **900** seconds) and passes **`--project`** plus **`with subprojects included`** to Timing so the report matches "FilOz & subprojects" without exporting your whole library. If you still hit -1712, narrow the date range or raise the limit, for example:
 
 ```bash
 uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3 --timeout 1800
@@ -154,6 +155,30 @@ What the script does:
 - Writes each week's start date, days worked, and hours; D and E columns use the existing rate formulas
 - Updates the Invoice Totals row SUM range to match
 
+### 5) Download invoice tab as XLSX
+
+Exports a single invoice tab from the invoices workbook as a standalone XLSX file, ready for upload to Toku.
+
+The script copies the tab into a temporary Google Spreadsheet, exports that as XLSX via the Drive API (so you get a clean single-sheet file with all formatting intact), then deletes the temporary spreadsheet.
+
+**Dry-run (prints steps without touching anything):**
+
+```bash
+uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5 --dry-run
+```
+
+**Download to current directory (`biglep invoice - 2026-5.xlsx`):**
+
+```bash
+uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5
+```
+
+**Download to a specific path:**
+
+```bash
+uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5 --output ~/Desktop/"biglep invoice - 2026-5.xlsx"
+```
+
 ## Monthly workflow
 
 1. Export from Timing:
@@ -180,7 +205,12 @@ What the script does:
    ```bash
    uv run python -m filoz_time_tracking.create_invoice_tab --invoice 2026-5
    ```
-7. Review the new tab in the invoices spreadsheet and submit.
+7. Download the invoice tab as XLSX:
+   ```bash
+   uv run python -m filoz_time_tracking.download_invoice_sheet --invoice 2026-5
+   ```
+   Saves as `biglep invoice - 2026-5.xlsx` in the current directory.
+8. Upload the XLSX to Toku manually: [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices)
 
 ## Column mapping
 
@@ -193,4 +223,4 @@ What the script does:
 
 Possible enhancements—not implemented yet; capture here so they are not lost:
 
-  1. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.
+  1. **Automate Toku upload** — Use computer-use automation to open [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices) and upload the XLSX file, replacing the current manual step. (Toku does not appear to have a public API for invoice submission.)
