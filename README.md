@@ -118,7 +118,11 @@ uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --
 1. Export with CLI for explicit range or invoice shorthand, e.g. `uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3`.
 2. Run importer with `--dry-run` to confirm rows look correct.
 3. Run importer without `--dry-run` to append to the Tracking tab. Formula columns D, F, G, H, I, J are filled automatically.
-4. Use the sheet as usual for invoicing (Monthly Pivot, Invoice Pivot, etc.).
+4. Run the anomaly review to check for gaps, travel day billing, and anything unusual:
+   ```bash
+   uv run python -m filoz_time_tracking.analyze_tracking --invoice 2026-3
+   ```
+5. Use the sheet as usual for invoicing (Monthly Pivot, Invoice Pivot, etc.).
 
 ## Column mapping
 
@@ -131,7 +135,6 @@ uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --
 
 Possible enhancements—not implemented yet; capture here so they are not lost:
 
-1. **Anomaly review with AI** — Pass the time-tracking workbook (or a sanitized export) to an assistant (e.g. Claude) with a fixed checklist: gaps, duplicate days, unusual durations, project/title mismatches, or totals that disagree with pivots. Any such path should stay **operator-controlled** (explicit consent, no surprise uploads; align with project rules on secrets and PII).
-2. **Invoice field extraction** — Script or AI-assisted step to read the sheet (or pivot tabs) and emit the exact values needed for the external invoice (amounts, line items, period labels)—ideally deterministic from named ranges or cells.
-3. **New monthly invoice tab** — Script that creates a new sheet/tab in the **invoices** workbook from a template, keyed by **invoice date** or invoice id (e.g. `2026-4`), with correct links or formulas back to the tracking sheet.
+1. **Invoice field extraction** — Script or AI-assisted step to read the sheet (or pivot tabs) and emit the exact values needed for the external invoice (amounts, line items, period labels)—ideally deterministic from named ranges or cells.
+2. **New monthly invoice tab** — Script that creates a new sheet/tab in the **invoices** workbook from a template, keyed by **invoice date** or invoice id (e.g. `2026-4`), with correct links or formulas back to the tracking sheet.
 4. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.
