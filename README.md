@@ -1,6 +1,6 @@
 # FilOz Time Tracking Utils
 
-Convert **Timing App** Excel exports into the **Tracking** tab of the biglep time tracking Google Sheet. Only Day, Start, End, and Notes are inserted; Duration, Week Number, Duration (decimal), Year, Month Number, and Toku Invoice are calculated by the sheet.
+Convert **Timing App** Excel exports into the **Tracking** tab of the biglep time tracking Google Sheet. Day, Start, End, and Notes are inserted directly; Duration, Week Number, Duration (decimal), Year, Month Number, and Toku Invoice are then filled automatically by copying formulas from the row above.
 
 **Current scope:** This project is primarily for **billing import** from Timing XLSX exports into Google Sheets.
 It may also include **optional** read-focused helpers around the **[Timing Web API](https://web.timingapp.com/llms.txt)** for data access, but categorization remains in the **Timing App native UI** (rules, suggestions, and manual workflow).
@@ -105,25 +105,33 @@ uv run python -m filoz_time_tracking.import_timing_export path/to/your-timing-ex
 uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --limit 1
 ```
 
+**Autofill behaviour:**
+
+After appending rows, the importer automatically fills formula columns D, F, G, H, I, J by copying from the row directly above the first new row. The sheet remains the source of truth for the actual formulas — the script just pulls them down. To skip this step:
+
+```bash
+uv run python -m filoz_time_tracking.import_timing_export path/to/export.xlsx --no-autofill
+```
+
 ## Monthly workflow
 
 1. Export with CLI for explicit range or invoice shorthand, e.g. `uv run python -m filoz_time_tracking.export_timing_report --invoice 2026-3`.
 2. Run importer with `--dry-run` to confirm rows look correct.
-3. Run importer without `--dry-run` to append to the Tracking tab.
+3. Run importer without `--dry-run` to append to the Tracking tab. Formula columns D, F, G, H, I, J are filled automatically.
 4. Use the sheet as usual for invoicing (Monthly Pivot, Invoice Pivot, etc.).
 
 ## Column mapping
 
 - **Timing** columns used: Start Date, End Date, Project, Title.
 - **Tracking** row written: `[Day, Start, End, "", Notes]` where **Notes** = `"{Project}: {Title}"`.
-- Day = date from Start Date (YYYY-MM-DD); Start/End = time (HH:MM). Column D is left blank so the sheet’s Duration formula applies.
+- Day = date from Start Date (YYYY-MM-DD); Start/End = time (HH:MM).
+- Columns D, F, G, H, I, J (Duration, Week Number, Duration (decimal), Year, Month Number, Toku Invoice) are filled by copying formulas from the row above. The sheet is the source of truth for those formulas.
 
 ## Future ideas (workflow backlog)
 
 Possible enhancements—not implemented yet; capture here so they are not lost:
 
-1. **Autofill formulas after import** — After appending rows to **Tracking**, trigger or simulate the same behavior as “fill down” / autofill so derived columns (Duration, week, decimal hours, invoice fields, etc.) populate without manual drag or copy.
-2. **Anomaly review with AI** — Pass the time-tracking workbook (or a sanitized export) to an assistant (e.g. Claude) with a fixed checklist: gaps, duplicate days, unusual durations, project/title mismatches, or totals that disagree with pivots. Any such path should stay **operator-controlled** (explicit consent, no surprise uploads; align with project rules on secrets and PII).
-3. **Invoice field extraction** — Script or AI-assisted step to read the sheet (or pivot tabs) and emit the exact values needed for the external invoice (amounts, line items, period labels)—ideally deterministic from named ranges or cells.
-4. **New monthly invoice tab** — Script that creates a new sheet/tab in the **invoices** workbook from a template, keyed by **invoice date** or invoice id (e.g. `2026-4`), with correct links or formulas back to the tracking sheet.
-5. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.
+1. **Anomaly review with AI** — Pass the time-tracking workbook (or a sanitized export) to an assistant (e.g. Claude) with a fixed checklist: gaps, duplicate days, unusual durations, project/title mismatches, or totals that disagree with pivots. Any such path should stay **operator-controlled** (explicit consent, no surprise uploads; align with project rules on secrets and PII).
+2. **Invoice field extraction** — Script or AI-assisted step to read the sheet (or pivot tabs) and emit the exact values needed for the external invoice (amounts, line items, period labels)—ideally deterministic from named ranges or cells.
+3. **New monthly invoice tab** — Script that creates a new sheet/tab in the **invoices** workbook from a template, keyed by **invoice date** or invoice id (e.g. `2026-4`), with correct links or formulas back to the tracking sheet.
+4. **Download one sheet from invoices workbook** — Script to export a **single** worksheet from the Google invoices spreadsheet to `.xlsx` or CSV (by tab name or invoice id) for archiving or sending.

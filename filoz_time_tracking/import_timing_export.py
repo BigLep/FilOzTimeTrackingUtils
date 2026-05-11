@@ -36,6 +36,11 @@ def main() -> int:
         metavar="N",
         help="Only add the first N rows (e.g. --limit 1 to add just one row).",
     )
+    parser.add_argument(
+        "--no-autofill",
+        action="store_true",
+        help="Skip filling formula columns (D, F, G, H, I, J) after appending rows.",
+    )
     args = parser.parse_args()
 
     if args.test_credentials:
@@ -76,6 +81,8 @@ def main() -> int:
     if args.dry_run:
         print("DRY RUN – no changes will be made to the sheet.\n")
         print(f"Would append {len(rows)} row(s) to tab: {config.get_tracking_sheet_name()}")
+        autofill_note = "(skipped via --no-autofill)" if args.no_autofill else "D, F, G, H, I, J"
+        print(f"Formula autofill columns: {autofill_note}")
         print("Columns: Day, Start, End, (Duration formula), Notes\n")
         show = min(10, len(rows))
         print(f"First {show} row(s):")
@@ -90,8 +97,10 @@ def main() -> int:
         return 0
 
     try:
-        n = append_tracking_rows(rows, dry_run=False)
+        n, filled = append_tracking_rows(rows, dry_run=False, autofill=not args.no_autofill)
         print(f"Appended {n} row(s) to {config.get_tracking_sheet_name()}.")
+        if not args.no_autofill:
+            print(f"Autofilled formula columns (D, F, G, H, I, J) for {filled} row(s).")
         return 0
     except Exception as e:
         print(f"Error appending to sheet: {e}", file=sys.stderr)
