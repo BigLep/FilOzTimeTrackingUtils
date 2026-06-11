@@ -11,6 +11,10 @@ Automates the monthly invoicing workflow for FilOz:
 
 **Current scope:** Billing import and invoice tab creation. Categorisation of time entries remains in the Timing App native UI.
 
+## Getting started
+
+The easiest way to run the monthly invoice workflow is via the **Claude Code skill** at `.claude/skills/filoz-monthly-invoice/`. In a Claude Code session, say "it's time to do the FilOz invoice for 2026-7" and the skill will orchestrate all steps, pause for your review, and handle errors. The sections below document each command for reference and manual use.
+
 ## Setup
 
 1. **Clone or create the project** and install with [uv](https://docs.astral.sh/uv/):
@@ -37,6 +41,8 @@ Automates the monthly invoicing workflow for FilOz:
    - `FILOZ_TRACKING_SHEET_NAME` – default `Tracking`; change if your tab name differs.
    - `FILOZ_INVOICE_SHEET_ID` – the invoices workbook sheet ID. Also share this sheet with the service account (Editor access).
    - `GOOGLE_APPLICATION_CREDENTIALS` – path to the service account JSON file.
+
+4. **Timing MCP (optional)** — If you use [Claude Code](https://claude.ai/code) to run the workflow, you can connect the [Timing MCP server](https://timingapp.com/help/mcp) to enable spot-checks against raw timer data during the audit step. This lets Claude verify high-hour days aren't stuck timers and corroborate totals against the Timing source of truth. Configure it in your Claude Code MCP settings; no additional env vars are needed.
 
 ## Usage
 
@@ -200,7 +206,7 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
 
 ## Monthly workflow
 
-> **Automated workflow available**: The `.claude/skills/filoz-monthly-invoice/` skill orchestrates all 9 steps below end-to-end. In a Claude Cowork or Claude Code session, just say "it's time to do the FilOz invoice for [month]" and it will run each step, pause for your review at the anomaly check and audit, and handle error cases. The steps below remain the authoritative reference for what each command does.
+> **Recommended**: Use the Claude Code skill (`.claude/skills/filoz-monthly-invoice/`) to run this workflow — just say "it's time to do the FilOz invoice for [month]". It orchestrates all 9 steps, pauses for your review at the anomaly check and audit, and handles error cases. The steps below are the authoritative reference for what each command does.
 
 1. Export from Timing:
    ```bash

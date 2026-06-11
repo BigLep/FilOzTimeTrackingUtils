@@ -23,7 +23,7 @@ description: >
 
 ## Workflow
 
-Ask the user for the invoice period (e.g. `2026-6`) if not provided. Run steps in order; the README has full command documentation.
+Ask the user for the invoice period (e.g. `2026-6`) if not provided. Run steps in order; the **[README](../../../README.md)** is the authoritative reference for command details, flags, column mappings, and troubleshooting — this skill file covers orchestration and reasoning guidance only.
 
 | # | Command | Notes |
 |---|---------|-------|
@@ -64,6 +64,16 @@ Don't proceed to step 5 until the user confirms.
 6. **Addresses** — any diff from previous invoice is a red flag.
 7. **Bank details** — any diff from previous invoice is a red flag.
 
+### Timing MCP spot-checks (if available)
+
+If the Timing MCP server is connected (see [setup](https://timingapp.com/help/mcp)), use `mcp__timing__list_time_entries` to corroborate the audit data against the raw timer source of truth:
+
+- **High-hour days** — For any day flagged with unusually high hours (e.g. >10 hrs), query that day's entries by project (FilOz parent project with `include_child_projects: true`) and verify there are multiple distinct entries with reasonable durations. A single entry spanning many hours suggests a stuck timer.
+- **Low-hour / weekend days** — For days with very few hours (e.g. <1 hr on a weekend), confirm the entries look like a quick check-in rather than missing data.
+- **Search by project, not text** — Many entries have no "FilOz" in their title/notes. Always query using the FilOz project ID with `include_child_projects: true` rather than `search_query`.
+
+Report spot-check findings alongside the audit summary.
+
 Summarise what looks clean and what deserves a second look. Pause and ask the user to confirm before step 9.
 
 ---
@@ -77,3 +87,16 @@ Summarise what looks clean and what deserves a second look. Pause and ask the us
 | `Template tab 'YYYY-N-1' not found` | Previous month's tab is missing from the invoices workbook. Ask the user. |
 | `AppleEvent timed out (-1712)` | Retry with `--timeout 1800`. |
 | Drive API 403 | Enable the Google Drive API in Google Cloud Console for the service account's project. |
+
+---
+
+## After every run — continuous improvement
+
+Each invoice run is an opportunity to improve the workflow. Before closing out, review the session for:
+
+- **Friction or manual workarounds** — Did any step require extra flags, retries, or manual intervention not covered here? Update the error handling table or add notes to the relevant step.
+- **New spot-check patterns** — Did the Timing MCP or audit reveal a new class of anomaly worth checking routinely? Add it to the Step 4 or Step 8 guidance.
+- **Stale examples or defaults** — Do invoice month examples, project IDs, or other hardcoded values need updating?
+- **README drift** — If you changed this skill file, check whether the README's workflow section or setup steps need a matching update (and vice versa). The README is the source of truth for command documentation; this skill is the source of truth for orchestration and reasoning.
+
+Make the edits directly — don't just suggest them. Small improvements compound over time.
