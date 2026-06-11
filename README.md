@@ -15,6 +15,8 @@ Automates the monthly invoicing workflow for FilOz:
 
 The easiest way to run the monthly invoice workflow is via the **Claude Code skill** at `.claude/skills/filoz-monthly-invoice/`. In a Claude Code session, say "it's time to do the FilOz invoice for 2026-7" and the skill will orchestrate all steps, pause for your review, and handle errors. The sections below document each command for reference and manual use.
 
+There is also an **AI expense report skill** at `.claude/skills/ai-expense-report/` for submitting monthly AI subscription expenses (Anthropic, OpenAI, Cursor) to Expensify. Say "time to expense my AI subscriptions" to run it.
+
 ## Setup
 
 1. **Clone or create the project** and install with [uv](https://docs.astral.sh/uv/):
