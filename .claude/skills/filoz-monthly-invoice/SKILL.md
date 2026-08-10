@@ -13,7 +13,7 @@ description: >
 ## Execution context
 
 - **Project**: `/Users/sal/Documents/Code/PersonalProjects/FilOzTimeTrackingUtils`
-- **Run commands via**: `mcp__Control_your_Mac__osascript` → `do shell script`
+- **Run commands via**: the `Bash` tool directly. (Older runs used `mcp__Control_your_Mac__osascript` → `do shell script`; that MCP is often not connected, and plain Bash works fine.)
 - **Command prefix**: `cd '/Users/sal/Documents/Code/PersonalProjects/FilOzTimeTrackingUtils' && /opt/homebrew/bin/uv run python -m filoz_time_tracking.<module> <args> 2>&1`
 - **Billing period**: 10th of previous month through 9th of invoice month. `2026-6` → `2026-05-10` to `2026-06-09`.
 - **Contract**: Travel days bill at 8 hrs/day regardless of actual hours worked.
@@ -28,7 +28,7 @@ Ask the user for the invoice period (e.g. `2026-6`) if not provided. Run steps i
 | # | Command | Notes |
 |---|---------|-------|
 | 1 | `export_timing_report --invoice YYYY-N` | Timing app must be running. Note the output filename for step 2. |
-| 2 | `import_timing_export <file>.xlsx --dry-run` | Verify row count, date range, Notes look like `"FilOz: <task>"`. Stop if anything looks wrong. |
+| 2 | `import_timing_export <file>.xlsx --dry-run` | Verify row count, date range, Notes look like `"<Child Project>: <task>"` (e.g. `"Filecoin Onchain Cloud: PR review"`, `"Communication: Morning comms"`). Stop if anything looks wrong. |
 | 3 | `import_timing_export <file>.xlsx` | Confirm import count matches dry-run. |
 | 4 | `analyze_tracking --invoice YYYY-N` | **Pause here** — see reasoning guidance below. |
 | 5 | `create_invoice_tab --invoice YYYY-N --dry-run` | Verify week count, days/week, total hours before proceeding. |
@@ -44,9 +44,9 @@ Ask the user for the invoice period (e.g. `2026-6`) if not provided. Run steps i
 Read the output and present a summary to the user before continuing. Things to check:
 
 - **Missing weekdays**: Check the user's calendar before flagging — vacation gaps are expected.
-- **Travel days**: Entries with travel keywords (flight, airport, driving to, colo + travel) must bill 8 hrs/day per contract.
+- **Travel days**: Entries with travel keywords (flight, airport, driving to, colo + travel) must bill 8 hrs/day per contract. **Only work travel qualifies.** Personal trips found on the calendar explain absences but bill nothing; check whether the FilOz project actually has travel entries before applying the 8 hr/day rule.
 - **Unusual hours**: Entries >8 hrs may be a forgotten timer stop. Entries <5 min are likely noise.
-- **Overlapping entries**: Flag clearly.
+- **Overlapping entries**: Usually **false positives from after-midnight work**. The analyzer attributes a post-midnight entry (e.g. `0:54-1:43`) to the prior workday, then reports it as overlapping that day's morning entries. Confirm via `mcp__timing__list_time_entries` for the day before flagging to the user: if the raw entries are contiguous and non-overlapping, say so rather than passing the warning through.
 
 Don't proceed to step 5 until the user confirms.
 
@@ -70,7 +70,7 @@ If the Timing MCP server is connected (see [setup](https://timingapp.com/help/mc
 
 - **High-hour days** — For any day flagged with unusually high hours (e.g. >10 hrs), query that day's entries by project (FilOz parent project with `include_child_projects: true`) and verify there are multiple distinct entries with reasonable durations. A single entry spanning many hours suggests a stuck timer.
 - **Low-hour / weekend days** — For days with very few hours (e.g. <1 hr on a weekend), confirm the entries look like a quick check-in rather than missing data.
-- **Search by project, not text** — Many entries have no "FilOz" in their title/notes. Always query using the FilOz project ID with `include_child_projects: true` rather than `search_query`.
+- **Search by project, not text** — Many entries have no "FilOz" in their title/notes. Always query using the FilOz parent project ID `3777560271585728256` with `include_child_projects: true` rather than `search_query`.
 
 Report spot-check findings alongside the audit summary.
 
