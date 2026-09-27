@@ -243,7 +243,7 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
    ```bash
    uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5
    ```
-9. Upload the XLSX to Toku manually: [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices)
+9. Upload the XLSX to Toku manually: [https://app.toku.com/hris/contractor/invoices/new](https://app.toku.com/hris/contractor/invoices/new)
 
 ## Column mapping
 
@@ -256,4 +256,4 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
 
 Possible enhancements—not implemented yet; capture here so they are not lost:
 
-  1. **Automate Toku upload** — Use computer-use automation to open [https://app.toku.com/myinfo/invoices](https://app.toku.com/myinfo/invoices) and upload the XLSX file, replacing the current manual step. (Toku does not appear to have a public API for invoice submission.)
+  1. **Automate Toku upload** — Use computer-use automation to open [https://app.toku.com/hris/contractor/invoices/new](https://app.toku.com/hris/contractor/invoices/new) and upload the XLSX file, replacing the current manual step. Checked Toku's public docs (docs.toku.com): the only invoice-related API endpoints are `submit-bulk-payments` and `mark-payment-settled`, both on the paying-client side (WorkCo), not the contractor side — there is no API for a contractor to submit an invoice, so this stays UI automation or manual for now.

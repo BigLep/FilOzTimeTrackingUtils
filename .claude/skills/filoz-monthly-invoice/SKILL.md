@@ -17,7 +17,7 @@ description: >
 - **Command prefix**: `cd '/Users/sal/Documents/Code/PersonalProjects/FilOzTimeTrackingUtils' && /opt/homebrew/bin/uv run python -m filoz_time_tracking.<module> <args> 2>&1`
 - **Billing period**: 10th of previous month through 9th of invoice month. `2026-6` → `2026-05-10` to `2026-06-09`.
 - **Contract**: Travel days bill at 8 hrs/day regardless of actual hours worked.
-- **Toku upload**: Manual — always the final action. https://app.toku.com/myinfo/invoices
+- **Toku upload**: Manual — always the final action. https://app.toku.com/hris/contractor/invoices/new
 
 ---
 
@@ -35,7 +35,7 @@ Ask the user for the invoice period (e.g. `2026-6`) if not provided. Run steps i
 | 6 | `create_invoice_tab --invoice YYYY-N` | Confirm totals match the dry-run. |
 | 7 | `download_invoice_sheet --invoice YYYY-N` | Saves `biglep invoice - YYYY-N.xlsx` in the project directory. |
 | 8 | `audit_invoice --invoice YYYY-N` | **Pause here** — see audit reasoning below. |
-| 9 | Manual Toku upload | Tell user to upload `biglep invoice - YYYY-N.xlsx` at https://app.toku.com/myinfo/invoices |
+| 9 | Manual Toku upload | Tell user to upload `biglep invoice - YYYY-N.xlsx` at https://app.toku.com/hris/contractor/invoices/new |
 
 ---
 
