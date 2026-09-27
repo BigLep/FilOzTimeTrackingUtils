@@ -254,6 +254,7 @@ Used by the `timing-daily-draft` skill. Reads raw `activity_slice` output from t
 ```bash
 uv run python -m filoz_time_tracking.segment_activity slice.txt
 uv run python -m filoz_time_tracking.segment_activity --whatsapp-madison --min-span 5 slice-am.txt slice-pm.txt
+uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt   # also list what each candidate contains
 ```
 
 ## Column mapping

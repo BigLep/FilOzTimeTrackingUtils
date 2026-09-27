@@ -16,8 +16,14 @@ Plannotator on a Madison repo, WhatsApp chats, Messages contacts, Orca). The
 accuracy gates that catch this are in docs/adr/0004 and the timing-daily-draft
 skill; subprojects, titles, and meetings are also left to that process.
 
+With ``--detail``, each candidate is followed by what was in it: the top
+app / context (domain, file path, or window title) / Timing-project lines by
+time, each marked with its class. That is the input the content-check gate
+needs, without re-reading the raw rows.
+
 Usage:
     uv run python -m filoz_time_tracking.segment_activity slice-morning.txt slice-afternoon.txt
+    uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt
     uv run python -m filoz_time_tracking.segment_activity --whatsapp-madison slice.txt
     uv run python -m filoz_time_tracking.segment_activity --min-span 5 slice.txt
 """
@@ -67,7 +73,7 @@ def classify(app: str, context: str, whatsapp_madison: bool) -> str:
     return "N"
 
 
-def load_rows(path: str, whatsapp_madison: bool) -> list[tuple[datetime, datetime, str, str, str]]:
+def load_rows(path: str, whatsapp_madison: bool) -> list[tuple[datetime, datetime, str, str, str, str]]:
     text = open(path).read()
     if text.lstrip().startswith("["):
         text = json.loads(text)[0]["text"]
@@ -85,7 +91,8 @@ def load_rows(path: str, whatsapp_madison: bool) -> list[tuple[datetime, datetim
         if end < start:
             end += timedelta(days=1)
         app, context = m.group(3).strip(), m.group(4).strip()
-        rows.append((start, end, app, context, classify(app, context, whatsapp_madison)))
+        project = line.rsplit("|", 1)[-1].strip()
+        rows.append((start, end, app, context, classify(app, context, whatsapp_madison), project))
     return rows
 
 
@@ -93,7 +100,7 @@ def to_blocks(rows, gap_max: float) -> list[Block]:
     """Collapse consecutive same-class rows into blocks; neutral rows inherit the previous class."""
     blocks: list[Block] = []
     last_cls = None
-    for start, end, _app, _context, cls in sorted(rows):
+    for start, end, _app, _context, cls, _project in sorted(rows):
         if cls == "N":
             cls = last_cls or "N"
         else:
@@ -140,12 +147,31 @@ def merge(blocks: list[Block], detour_max: float, gap_max: float) -> list[Block]
     return entries
 
 
+def detail_lines(entry: Block, rows, top: int, min_seconds: float) -> list[str]:
+    """Top app / context / Timing-project lines by time inside an entry's span."""
+    totals: dict[tuple[str, str, str, str], float] = {}
+    for start, end, app, context, cls, project in rows:
+        overlap = (min(end, entry.end) - max(start, entry.start)).total_seconds()
+        if overlap > 0:
+            key = (cls, app, context, project)
+            totals[key] = totals.get(key, 0) + overlap
+    ranked = sorted(totals.items(), key=lambda kv: -kv[1])
+    shown = [(k, v) for k, v in ranked[:top] if v >= min_seconds]
+    lines = [f"    {v / 60:5.1f}m {cls} {app} | {context} | {project}" for (cls, app, context, project), v in shown]
+    rest = sum(v for _, v in ranked) - sum(v for _, v in shown)
+    if rest >= 1:
+        lines.append(f"    {rest / 60:5.1f}m in {len(ranked) - len(shown)} other lines")
+    return lines
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("files", nargs="+", help="activity_slice output files for one day (any order)")
     parser.add_argument("--detour-max", type=float, default=2, help="minutes; a longer foreign stretch ends an entry (default 2)")
     parser.add_argument("--gap-max", type=float, default=5, help="minutes; longer silence ends an entry (default 5)")
     parser.add_argument("--min-span", type=float, default=0, help="minutes; hide candidates shorter than this")
+    parser.add_argument("--detail", action="store_true", help="list what each candidate contains (top app/context/project lines)")
+    parser.add_argument("--detail-top", type=int, default=8, help="lines per candidate with --detail (default 8)")
     parser.add_argument("--whatsapp-madison", action="store_true", help="treat all WhatsApp as Madison (check chat names first)")
     args = parser.parse_args(argv)
 
@@ -163,6 +189,8 @@ def main(argv: list[str] | None = None) -> int:
         flag = " FLAG>10%" if e.cls == "F" and pct > 10 else ""
         print(f"{e.cls} {e.start:%H:%M:%S}-{e.end:%H:%M:%S} span={span:5.1f}m active={e.active / 60:5.1f}m"
               + (f" absorbed[{absorbed}]" if absorbed else "") + flag + (" SHORT" if span < 5 else ""))
+        if args.detail:
+            print("\n".join(detail_lines(e, rows, args.detail_top, 20)))
     return 0
 
 
