@@ -9,13 +9,15 @@ Automates the monthly invoicing workflow for FilOz:
 5. Downloads the invoice tab as a single-sheet XLSX file ready for upload to Toku.
 6. Audits the invoice against all historical invoices — hours cross-check, rate consistency, address and bank detail comparison.
 
-**Current scope:** Billing import and invoice tab creation. Categorisation of time entries remains in the Timing App native UI.
+**Current scope:** Drafting daily time entries from Timing's auto-tracked activity (human-reviewed), billing import, and invoice tab creation. Vocabulary lives in [CONTEXT.md](CONTEXT.md) and decisions in [docs/adr/](docs/adr/).
 
 ## Getting started
 
 The easiest way to run the monthly invoice workflow is via the **Claude Code skill** at `.claude/skills/filoz-monthly-invoice/`. In a Claude Code session, say "it's time to do the FilOz invoice for 2026-7" and the skill will orchestrate all steps, pause for your review, and handle errors. The sections below document each command for reference and manual use.
 
 There is also an **AI expense report skill** at `.claude/skills/ai-expense-report/` for submitting monthly AI subscription expenses (Anthropic, OpenAI, Cursor) to Expensify. Say "time to expense my AI subscriptions" to run it.
+
+The **Timing daily draft skill** at `.claude/skills/timing-daily-draft/` drafts a day's time entries from auto-tracked activity as a day proposal for review, applies it to Timing once approved, and reconciles your edits afterward. It needs the `timing-local` MCP (Timing's Mac-app MCP). Private data (the playbook of learned conventions and the day proposals) lives in the gitignored `local/` folder. Say "draft yesterday's time entries" to run it.
 
 ## Setup
 
@@ -244,6 +246,15 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
    uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5
    ```
 9. Upload the XLSX to Toku manually: [https://app.toku.com/hris/contractor/invoices/new](https://app.toku.com/hris/contractor/invoices/new)
+
+### Segment a day's activity (for time-entry drafting)
+
+Used by the `timing-daily-draft` skill. Reads raw `activity_slice` output from the timing-local MCP, labels each activity FilOz, Madison, or personal by app, and merges it into candidate time entries using the billing-integrity rules in [ADR 0001](docs/adr/0001-billing-integrity-two-minute-detours.md) (a detour over 2 minutes or silence over 5 minutes ends an entry; shorter glances are absorbed and totalled):
+
+```bash
+uv run python -m filoz_time_tracking.segment_activity slice.txt
+uv run python -m filoz_time_tracking.segment_activity --whatsapp-madison --min-span 5 slice-am.txt slice-pm.txt
+```
 
 ## Column mapping
 

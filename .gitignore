@@ -15,3 +15,6 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# Private drafting data (playbook, day proposals): may contain PII
+local/
