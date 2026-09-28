@@ -44,6 +44,14 @@ Apply the playbook's settled conventions first, then its learned signals. The no
 - Gaps of 5 minutes or less are bridged; longer gaps end the entry. Off-computer time is never billed.
 - Meetings: calendar title, real attended span from Zoom/Meet activity, notes with the agenda or doc link and no join boilerplate. Declined events or events with no activity are listed, not entered.
 
+Titles, in this order:
+
+1. Meetings take the calendar title as it is.
+2. Other work reuses a title from the playbook's title vocabulary, choosing the closest match for the content (with typos corrected).
+3. Only when nothing there fits, write a new title: a few words naming the work done, not the project (the project is already on the entry), in the style of the existing titles. Mark it in the proposal header as `🆕 (new title)` so the reviewer can accept or change it.
+
+At reconciliation, add accepted new titles to the playbook vocabulary, and log the user's retitles as lessons.
+
 Every entry gets a Confidence. Med and Low entries carry the reasoning, the precedent or signal relied on, and what would change the call. Ambiguous stretches stay uncovered and are listed with a best guess.
 
 ### 4. Write the day proposal
