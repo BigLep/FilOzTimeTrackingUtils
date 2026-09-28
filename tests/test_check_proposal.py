@@ -50,7 +50,7 @@ class SubtractTest(unittest.TestCase):
 class CheckTest(unittest.TestCase):
     def run_check(self, body: str) -> list[str]:
         entries, deviations = parse_proposal(proposal(body))
-        return check(entries, deviations, FILOZ_CANDIDATE, min_span=5, tolerance=60)
+        return check(entries, deviations, FILOZ_CANDIDATE, min_span=3, tolerance=60)
 
     def test_trimmed_lead_in_is_undeclared(self):
         # The Sep 17 case: the draft started at 07:31 though the candidate starts at 07:22:35.
@@ -75,8 +75,14 @@ class CheckTest(unittest.TestCase):
 
     def test_short_candidates_need_no_entry(self):
         entries, deviations = parse_proposal(proposal(""))
-        short = [Block("F", t("10:00:00"), t("10:04:00"), 0)]
-        self.assertEqual(check(entries, deviations, short, min_span=5, tolerance=60), [])
+        short = [Block("F", t("10:00:00"), t("10:03:00"), 0)]
+        self.assertEqual(check(entries, deviations, short, min_span=3, tolerance=60), [])
+
+    def test_candidates_over_min_span_need_an_entry(self):
+        entries, deviations = parse_proposal(proposal(""))
+        over = [Block("F", t("10:00:00"), t("10:03:30"), 0)]
+        self.assertEqual(check(entries, deviations, over, min_span=3, tolerance=60),
+                         ["UNDECLARED unbilled FilOz 10:00:00-10:03:30 (3.5m, not covered by any entry)"])
 
 
 if __name__ == "__main__":

@@ -27,9 +27,9 @@ needs, without re-reading the raw rows.
 
 Usage:
     uv run python -m filoz_time_tracking.segment_activity slice-morning.txt slice-afternoon.txt
-    uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt
+    uv run python -m filoz_time_tracking.segment_activity --detail --min-span 3 slice.txt
     uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal slice.txt
-    uv run python -m filoz_time_tracking.segment_activity --min-span 5 slice.txt
+    uv run python -m filoz_time_tracking.segment_activity --min-span 3 slice.txt
 """
 from __future__ import annotations
 

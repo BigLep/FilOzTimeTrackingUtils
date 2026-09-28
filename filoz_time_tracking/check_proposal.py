@@ -4,7 +4,7 @@ The boundaries gate (ADR 0004) says every billed minute comes from the
 segmenter, but the drafter still chooses where entries start and end. This
 check compares the two mechanically:
 
-- **Unbilled FilOz:** time inside a FilOz (F) candidate of at least
+- **Unbilled FilOz:** time inside a FilOz (F) candidate longer than
   ``--min-span`` minutes that no billable entry covers. This catches a
   lead-in or tail trimmed by judgment, and also a relabel (the time is covered
   by a Madison entry instead).
@@ -128,7 +128,7 @@ def check(entries: list[Entry], deviations: list[Deviation], candidates, min_spa
     """Return one line per boundary difference; undeclared ones start with 'UNDECLARED'."""
     tol = timedelta(seconds=tolerance)
     filoz = [(c.start, c.end) for c in candidates if c.cls == "F"]
-    filoz_counted = [(s, e) for s, e in filoz if (e - s).total_seconds() >= min_span * 60]
+    filoz_counted = [(s, e) for s, e in filoz if (e - s).total_seconds() > min_span * 60]
     billed = [(e.start, e.end) for e in entries if e.billable]
     others = [e for e in entries if not e.billable]
 
@@ -155,7 +155,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("proposal", help="local/proposals/YYYY-MM-DD.md")
     parser.add_argument("files", nargs="+", help="that day's activity_slice output files")
-    parser.add_argument("--min-span", type=float, default=5, help="minutes; F candidates shorter than this need no entry (default 5)")
+    parser.add_argument("--min-span", type=float, default=3, help="minutes; F candidates this long or shorter need no entry (default 3)")
     parser.add_argument("--tolerance", type=float, default=60, help="seconds of difference to ignore, for minute rounding (default 60)")
     parser.add_argument("--detour-max", type=float, default=DETOUR_MAX_MINUTES, help=f"minutes; pass through to the segmenter (default {DETOUR_MAX_MINUTES})")
     parser.add_argument("--gap-max", type=float, default=GAP_MAX_MINUTES, help=f"minutes; pass through to the segmenter (default {GAP_MAX_MINUTES})")

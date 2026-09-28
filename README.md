@@ -255,8 +255,8 @@ Tests: `uv run python -m unittest discover tests`.
 
 ```bash
 uv run python -m filoz_time_tracking.segment_activity slice.txt
-uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal --min-span 5 slice-am.txt slice-pm.txt
-uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt   # also list what each candidate contains
+uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal --min-span 3 slice-am.txt slice-pm.txt
+uv run python -m filoz_time_tracking.segment_activity --detail --min-span 3 slice.txt   # also list what each candidate contains
 ```
 
 After writing a day proposal, check that its billed time matches the FilOz candidates. Any difference over a minute must be billed or listed under `## Boundary deviations` in the proposal; the command exits 1 otherwise:
