@@ -17,7 +17,7 @@ The easiest way to run the monthly invoice workflow is via the **Claude Code ski
 
 There is also an **AI expense report skill** at `.claude/skills/ai-expense-report/` for submitting monthly AI subscription expenses (Anthropic, OpenAI, Cursor) to Expensify. Say "time to expense my AI subscriptions" to run it.
 
-The **Timing daily draft skill** at `.claude/skills/timing-daily-draft/` drafts a day's time entries from auto-tracked activity as a day proposal for review, applies it to Timing once approved, and reconciles your edits afterward. It needs the `timing-local` MCP (Timing's Mac-app MCP). Private data (the playbook of learned conventions and the day proposals) lives in the gitignored `local/` folder. Say "draft yesterday's time entries" to run it.
+The **Timing daily draft skill** at `.claude/skills/timing-daily-draft/` drafts a day's time entries from auto-tracked activity as a day proposal for review, applies it to Timing once approved, and reconciles your edits afterward. It needs the `timing-local` MCP (Timing's Mac-app MCP). Private data (the playbook of learned conventions and the day proposals) lives in the gitignored `local/` folder. Say "draft yesterday's time entries" to run it. For how the data flows and where the segmenter fits, with sample data, see [docs/timing-daily-draft.md](docs/timing-daily-draft.md).
 
 ## Setup
 
@@ -249,11 +249,13 @@ uv run python -m filoz_time_tracking.audit_invoice --invoice 2026-5 --xlsx ~/Des
 
 ### Segment a day's activity (for time-entry drafting)
 
-Used by the `timing-daily-draft` skill. Reads raw `activity_slice` output from the timing-local MCP, labels each activity FilOz, Madison, or personal by app, and merges it into candidate time entries using the billing-integrity rules in [ADR 0001](docs/adr/0001-billing-integrity-two-minute-detours.md) (a detour over 2 minutes or silence over 5 minutes ends an entry; shorter glances are absorbed and totalled):
+Used by the `timing-daily-draft` skill. Reads raw `activity_slice` output from the timing-local MCP, labels each activity FilOz, Madison, or personal (mostly by app; WhatsApp defaults to Madison, `--whatsapp-personal` overrides), and merges it into candidate time entries using the billing-integrity rules in [ADR 0001](docs/adr/0001-billing-integrity-two-minute-detours.md) (a detour over 2 minutes or silence over 5 minutes ends an entry; shorter glances are absorbed and totalled):
+
+Tests: `uv run python -m unittest discover tests`.
 
 ```bash
 uv run python -m filoz_time_tracking.segment_activity slice.txt
-uv run python -m filoz_time_tracking.segment_activity --whatsapp-madison --min-span 5 slice-am.txt slice-pm.txt
+uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal --min-span 5 slice-am.txt slice-pm.txt
 uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt   # also list what each candidate contains
 ```
 

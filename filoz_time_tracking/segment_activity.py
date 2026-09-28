@@ -11,10 +11,14 @@ context, and merges the rows into candidate entries:
   total is reported so the proposal can note (and flag) them.
 
 The output is a starting point for a day proposal, not the proposal itself.
-Classification is by app only, so some activity is mislabeled (Brave
-Plannotator on a Madison repo, WhatsApp chats, Messages contacts, Orca). The
-accuracy gates that catch this are in docs/adr/0004 and the timing-daily-draft
-skill; subprojects, titles, and meetings are also left to that process.
+Classification is mostly by app, so some activity is mislabeled (Messages
+contacts, Orca, WhatsApp on a day it wasn't Madison). Two exceptions use more
+than the app: a Brave ``localhost`` row that Timing filed under Madison is
+Madison (Plannotator reviewing a Madison repo; Timing sees the page title, the
+slice only shows the domain), and all WhatsApp is Madison unless
+``--whatsapp-personal``. The accuracy gates that catch the rest are in
+docs/adr/0004 and the timing-daily-draft skill; subprojects, titles, and
+meetings are also left to that process.
 
 With ``--detail``, each candidate is followed by what was in it: the top
 app / context (domain, file path, or window title) / Timing-project lines by
@@ -24,7 +28,7 @@ needs, without re-reading the raw rows.
 Usage:
     uv run python -m filoz_time_tracking.segment_activity slice-morning.txt slice-afternoon.txt
     uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt
-    uv run python -m filoz_time_tracking.segment_activity --whatsapp-madison slice.txt
+    uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal slice.txt
     uv run python -m filoz_time_tracking.segment_activity --min-span 5 slice.txt
 """
 from __future__ import annotations
@@ -38,7 +42,8 @@ from datetime import datetime, timedelta
 
 FILOZ_APPS = {"Brave Browser", "Slack", "Orca", "Zoom", "Granola", "Google Meet", "Trello", "Timing", "MeetingBar", "Warp"}
 MADISON_APPS = {"Dia"}
-PERSONAL_APPS = {"Safari", "Messages", "Mail", "Books", "Netflix", "Phone", "WhatsApp", "KaraFun", "Drawful 2", "Preview", "FaceTime"}
+PERSONAL_APPS = {"Safari", "Messages", "Mail", "Books", "Netflix", "Phone", "KaraFun", "Drawful 2", "Preview", "FaceTime"}
+MADISON_PROJECT = "Volunteering ▸ Madison Ultimate"
 # Apps that say nothing about the thread of work: they inherit the previous row's class.
 NEUTRAL_APPS = {"Timing Tracker", "System Settings", "Finder", "loginwindow", "Claude", "ChatGPT", "Terminal", "Xcode", "Spotify"}
 
@@ -54,13 +59,17 @@ class Block:
     absorbed: dict[str, float] = field(default_factory=dict)
 
 
-def classify(app: str, context: str, whatsapp_madison: bool) -> str:
+def classify(app: str, context: str, project: str = "", whatsapp_personal: bool = False) -> str:
     """Return F, M, P, or N (neutral) for one activity row."""
     if app == "Cursor":
         if "Madison" in context:
             return "M"
         return "F" if "filoz" in context.lower() else "N"
-    if app == "WhatsApp" and ("Coaches" in context or whatsapp_madison):
+    if app == "WhatsApp":
+        # Rows carry no chat name; in practice WhatsApp is the Madison coach groups.
+        return "P" if whatsapp_personal else "M"
+    if app == "Brave Browser" and context.startswith("localhost") and project.startswith(MADISON_PROJECT):
+        # Plannotator on a Madison repo, opened in the FilOz Brave profile.
         return "M"
     if app in NEUTRAL_APPS:
         return "N"
@@ -73,8 +82,9 @@ def classify(app: str, context: str, whatsapp_madison: bool) -> str:
     return "N"
 
 
-def load_rows(path: str, whatsapp_madison: bool) -> list[tuple[datetime, datetime, str, str, str, str]]:
-    text = open(path).read()
+def load_rows(path: str, whatsapp_personal: bool = False) -> list[tuple[datetime, datetime, str, str, str, str]]:
+    with open(path) as f:
+        text = f.read()
     if text.lstrip().startswith("["):
         text = json.loads(text)[0]["text"]
     day_match = re.search(r"Time range: (\d{4}-\d{2}-\d{2})", text)
@@ -92,7 +102,7 @@ def load_rows(path: str, whatsapp_madison: bool) -> list[tuple[datetime, datetim
             end += timedelta(days=1)
         app, context = m.group(3).strip(), m.group(4).strip()
         project = line.rsplit("|", 1)[-1].strip()
-        rows.append((start, end, app, context, classify(app, context, whatsapp_madison), project))
+        rows.append((start, end, app, context, classify(app, context, project, whatsapp_personal), project))
     return rows
 
 
@@ -172,10 +182,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--min-span", type=float, default=0, help="minutes; hide candidates shorter than this")
     parser.add_argument("--detail", action="store_true", help="list what each candidate contains (top app/context/project lines)")
     parser.add_argument("--detail-top", type=int, default=8, help="lines per candidate with --detail (default 8)")
-    parser.add_argument("--whatsapp-madison", action="store_true", help="treat all WhatsApp as Madison (check chat names first)")
+    parser.add_argument("--whatsapp-personal", action="store_true", help="treat WhatsApp as personal (default is Madison); use on days with non-Madison chats")
     args = parser.parse_args(argv)
 
-    rows = [row for path in args.files for row in load_rows(path, args.whatsapp_madison)]
+    rows = [row for path in args.files for row in load_rows(path, args.whatsapp_personal)]
     if not rows:
         print("No activity rows found.", file=sys.stderr)
         return 1
