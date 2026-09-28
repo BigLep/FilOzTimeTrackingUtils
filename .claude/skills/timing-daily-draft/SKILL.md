@@ -57,7 +57,7 @@ Every entry gets a Confidence, shown with a color marker: 🟢 High, 🟡 Med, �
 
 ### 4. Write the day proposal
 
-Write `local/proposals/YYYY-MM-DD.md` using the template below, then tell the user it is ready to annotate (they use Plannotator). Revise until they say to apply.
+Write `local/proposals/YYYY-MM-DD.md` using the template below, run the boundary check (see the gates), then tell the user it is ready to annotate (they use Plannotator). Revise until they say to apply.
 
 ### 5. Apply
 
@@ -70,6 +70,7 @@ Entries drive a real invoice. ADR 0004 explains why each gate exists. Do not pre
 **Before presenting a proposal:**
 
 - [ ] **Boundaries from the segmenter.** Every entry's start and end come from `segment_activity` output (or `activity_slice` for a mid-row edge), never from eyeballing 15-minute blocks.
+- [ ] **Boundary check passes.** Run `uv run python -m filoz_time_tracking.check_proposal local/proposals/YYYY-MM-DD.md <saved slice files...>` (add `--whatsapp-personal` if the segmenter used it). It must exit 0. For each difference it reports, either bill the time or list the range under `## Boundary deviations` with the reason (a relabel, a meeting edge). Never trim a bridged lead-in or tail because the activity in it is sparse.
 - [ ] **Content check on every FilOz candidate.** Check the titles and domains under each F stretch. Confirm Brave Plannotator and localhost pages, Cursor/Orca/terminal repos (by where they live on disk), WhatsApp chats, and Messages contacts against the playbook. Relabel anything the app-only classifier got wrong, and note it.
 - [ ] **Absorbed time totalled and flagged.** Each FilOz entry's notes carry its absorbed glance total; anything with `FLAG>10%` is flagged with a proposed handling.
 - [ ] **Meetings reconciled with activity.** Every calendar event is either entered with its real attended span or listed under "Calendar events not entered" with the reason.
@@ -110,6 +111,10 @@ One or two lines of evidence. Absorbed glances total.
 
 ## Midday / Afternoon / Evening
 ...
+
+## Boundary deviations
+
+- 14:37–14:41: relabelled to Madison (M1); Madison Gmail and Cursor after 14:37
 
 ## Calendar events not entered
 ```

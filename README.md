@@ -259,6 +259,12 @@ uv run python -m filoz_time_tracking.segment_activity --whatsapp-personal --min-
 uv run python -m filoz_time_tracking.segment_activity --detail --min-span 5 slice.txt   # also list what each candidate contains
 ```
 
+After writing a day proposal, check that its billed time matches the FilOz candidates. Any difference over a minute must be billed or listed under `## Boundary deviations` in the proposal; the command exits 1 otherwise:
+
+```bash
+uv run python -m filoz_time_tracking.check_proposal local/proposals/2026-09-17.md slice.txt
+```
+
 ## Column mapping
 
 - **Timing** columns used: Start Date, End Date, Project, Title.

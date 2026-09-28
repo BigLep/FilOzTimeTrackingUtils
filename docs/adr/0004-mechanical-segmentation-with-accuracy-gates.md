@@ -7,6 +7,7 @@ Time entry boundaries determine billed minutes, so they are computed mechanicall
 | Concern | Gate |
 |---|---|
 | Eyeballed boundaries drift and round | The segmenter computes boundaries from second-level activity with fixed rules; results are reproducible by rerunning it. |
+| The drafter trims or moves a segmenter edge by judgment (for example, dropping a sparse lead-in before a meeting) | `check_proposal.py` compares the proposal's billed time with the FilOz candidates and fails on any difference over a minute that the proposal doesn't list under "Boundary deviations". |
 | App-only labels are wrong for some activity: Brave Plannotator on a Madison repo, WhatsApp chats, Messages contacts, Orca (no window titles) | Content check: every FilOz candidate is checked against titles, domains, and the repo's location on disk before it enters a proposal. |
 | Many sub-2-minute glances add up inside a billed entry | Absorbed time is totalled per entry; over 10% of a FilOz entry is flagged for the user. |
 | The calendar says what was scheduled, not what was attended | Meetings use the real Zoom/Meet span; declined or unattended events are listed, not entered. |
