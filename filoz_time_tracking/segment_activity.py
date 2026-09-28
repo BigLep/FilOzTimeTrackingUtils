@@ -47,6 +47,10 @@ MADISON_PROJECT = "Volunteering ▸ Madison Ultimate"
 # Apps that say nothing about the thread of work: they inherit the previous row's class.
 NEUTRAL_APPS = {"Timing Tracker", "System Settings", "Finder", "loginwindow", "Claude", "ChatGPT", "Terminal", "Xcode", "Spotify"}
 
+# ADR 0001 rules, in minutes: a longer foreign stretch, or longer silence, ends an entry.
+DETOUR_MAX_MINUTES = 2
+GAP_MAX_MINUTES = 5
+
 _ROW_RE = re.compile(r"(\d\d:\d\d:\d\d)-(\d\d:\d\d:\d\d) \| [^|]+\| ([^|]+)\| ([^|]+)\|")
 
 
@@ -177,8 +181,8 @@ def detail_lines(entry: Block, rows, top: int, min_seconds: float) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("files", nargs="+", help="activity_slice output files for one day (any order)")
-    parser.add_argument("--detour-max", type=float, default=2, help="minutes; a longer foreign stretch ends an entry (default 2)")
-    parser.add_argument("--gap-max", type=float, default=5, help="minutes; longer silence ends an entry (default 5)")
+    parser.add_argument("--detour-max", type=float, default=DETOUR_MAX_MINUTES, help=f"minutes; a longer foreign stretch ends an entry (default {DETOUR_MAX_MINUTES})")
+    parser.add_argument("--gap-max", type=float, default=GAP_MAX_MINUTES, help=f"minutes; longer silence ends an entry (default {GAP_MAX_MINUTES})")
     parser.add_argument("--min-span", type=float, default=0, help="minutes; hide candidates shorter than this")
     parser.add_argument("--detail", action="store_true", help="list what each candidate contains (top app/context/project lines)")
     parser.add_argument("--detail-top", type=int, default=8, help="lines per candidate with --detail (default 8)")

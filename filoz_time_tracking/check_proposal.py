@@ -32,7 +32,7 @@ import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
-from filoz_time_tracking.segment_activity import load_rows, merge, to_blocks
+from filoz_time_tracking.segment_activity import DETOUR_MAX_MINUTES, GAP_MAX_MINUTES, load_rows, merge, to_blocks
 
 Interval = tuple[datetime, datetime]
 
@@ -157,13 +157,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("files", nargs="+", help="that day's activity_slice output files")
     parser.add_argument("--min-span", type=float, default=5, help="minutes; F candidates shorter than this need no entry (default 5)")
     parser.add_argument("--tolerance", type=float, default=60, help="seconds of difference to ignore, for minute rounding (default 60)")
+    parser.add_argument("--detour-max", type=float, default=DETOUR_MAX_MINUTES, help=f"minutes; pass through to the segmenter (default {DETOUR_MAX_MINUTES})")
+    parser.add_argument("--gap-max", type=float, default=GAP_MAX_MINUTES, help=f"minutes; pass through to the segmenter (default {GAP_MAX_MINUTES})")
     parser.add_argument("--whatsapp-personal", action="store_true", help="pass through to the segmenter")
     args = parser.parse_args(argv)
 
     with open(args.proposal) as f:
         entries, deviations = parse_proposal(f.read())
     rows = [row for path in args.files for row in load_rows(path, args.whatsapp_personal)]
-    candidates = merge(to_blocks(rows, 300), 120, 300)
+    candidates = merge(to_blocks(rows, args.gap_max * 60), args.detour_max * 60, args.gap_max * 60)
     lines = check(entries, deviations, candidates, args.min_span, args.tolerance)
     undeclared = [l for l in lines if l.startswith("UNDECLARED")]
     print("\n".join(lines) if lines else "Billed time matches the segmenter's FilOz candidates.")
