@@ -53,7 +53,7 @@ Titles, in this order:
 
 At reconciliation, add accepted new titles to the playbook vocabulary, and log the user's retitles as lessons.
 
-Every entry gets a Confidence. Med and Low entries carry the reasoning, the precedent or signal relied on, and what would change the call. Ambiguous stretches stay uncovered and are listed with a best guess.
+Every entry gets a Confidence, shown with a color marker: 🟢 High, 🟡 Med, 🔴 Low. Med and Low entries carry the reasoning, the precedent or signal relied on, and what would change the call. Ambiguous stretches stay uncovered and are listed with a best guess.
 
 ### 4. Write the day proposal
 
@@ -99,7 +99,7 @@ Status: draft | applied | reconciled
 ## Morning
 
 ### E1 · 08:05–08:39 · Morning comms
-**FilOz ▸ Communication** · billable · 34m · Confidence: High · Entry ID: (filled on apply)
+**FilOz ▸ Communication** · billable · 34m · Confidence: 🟢 High · Entry ID: (filled on apply)
 
 One or two lines of evidence. Absorbed glances total.
 
