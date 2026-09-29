@@ -1,47 +1,69 @@
 ---
 name: ai-expense-report
 description: >
-  Guide the user through monthly AI subscription expense reporting (Anthropic,
-  OpenAI, Cursor) to Expensify. This is a human-in-the-loop process — Claude
-  navigates billing pages, finds receipts, creates drafts, and verifies results,
-  but the user must download PDFs, send emails, categorize, and submit.
+  Run monthly AI subscription expense reporting (Anthropic, OpenAI, Cursor) to
+  Expensify. Claude finds what's outstanding, reads the billing pages, downloads
+  and verifies the PDFs, emails everything to Expensify with the gog CLI, and
+  builds the report in the Expensify UI. The user downloads the Cursor PDFs,
+  gives one confirmation before anything is sent, and hits Submit.
 ---
 
 # AI Subscription Expense Report
 
 ## Role of this skill
 
-This is a **guided, human-in-the-loop workflow**. Claude can:
-- Check Expensify for which months are actually outstanding (step 0 — always do this first)
-- Search Gmail for Anthropic receipts and create forwarding drafts
-- Navigate to billing pages and identify the correct invoices
-- Verify expenses landed in Expensify via the read-only MCP
-- **Categorize, tag, and build the draft report in the Expensify UI via claude-in-chrome** (the read-only MCP can't, but the browser can)
+The goal is for the user to do as little as possible. Claude does:
+- Work out which months are outstanding (step 0, always first)
+- Find Anthropic receipts in Gmail and read their amounts
+- Read the OpenAI and Cursor billing pages to get the expected invoices
+- Find the downloaded PDFs in `~/Downloads` and verify each one (vendor, date, amount)
+- Email everything to Expensify with `gog` (forward the Anthropic receipts, send the PDFs as attachments)
+- Download the OpenAI receipt PDFs from Stripe (needs the Chrome download setting below)
+- Verify the expenses landed, then categorize, tag and build the draft report through claude-in-chrome
 
-The user must:
-- Download invoice PDFs (Cursor: one zip via "Download all"; OpenAI: from Stripe)
-- Send Gmail drafts and attach PDFs to emails
+The user does only:
+- Download the Cursor PDFs (cursor.com "Download"), until Claude has verified it can do this too
+- Give **one** confirmation of the invoice list, which authorizes Claude to send those exact emails
 - Review and hit **Submit** on the finished report
+- Log in to a vendor site if its session has expired (Claude never enters credentials)
 
 ## Execution context
 
 - **Subscriptions**: Anthropic (Claude), OpenAI (ChatGPT), Cursor
 - **Destination**: Expensify via `receipts@expensify.com` (SmartScan)
-- **Expensify workspace**: FilOz (policyID: `9950EB8E3A5E16C2`) — NOT PLGO (legacy)
+- **Expensify workspace**: FilOz (policyID: `9950EB8E3A5E16C2`), NOT PLGO (legacy)
 - **Expensify user**: biglep@filoz.org
 - **Expense category**: `General Allowance: Software Subscription/Licenses`
 - **Expense tag**: `AI Credit Allowance`
+- **Gmail**: the `gog` CLI with the account alias `personal` (the personal account that receives vendor receipts). Always pass `-a personal`. If the alias is missing, ask the user for the account and run `gog auth alias set personal <email>`; never write the address into this file.
 - **Chrome profile**: Any profile logged into claude.ai, chatgpt.com, cursor.com, and expensify.com with Claude-in-Chrome extension enabled
+- **Chrome download setting (REQUIRED)**: Settings → Downloads → **"Ask where to save each file before downloading" must be OFF**, and the download location must be `~/Downloads`. With it on, every download Claude triggers opens a native macOS save dialog that claude-in-chrome cannot see or click, and the download silently never lands (see "Downloads" under Known limitations).
+
+## Tools
+
+| Job | Tool |
+|---|---|
+| Find outstanding months, verify expenses and report | Expensify MCP `Search` (read-only) |
+| Search Gmail, forward receipts, send emails with attachments | `gog -a personal gmail ...` |
+| Read an email body (receipt amounts) | Gmail MCP `get_thread` with `PLAIN_TEXT`, or gog |
+| Billing pages, Expensify UI edits | claude-in-chrome |
+| Verify downloaded PDFs | `Read` on the PDF path |
+| Troubleshoot a download that didn't land (look only) | computer use, Google Chrome at read tier |
+
+The Gmail MCP can create drafts but not send, and passing attachments through it costs six figures of tokens per PDF. gog attaches files by path and can send, so prefer gog for anything that writes to Gmail.
 
 ## Known limitations
 
-- **Chrome extension blocks Stripe invoice pages** — Confirmed still true as of Aug 2026: clicking an OpenAI invoice row silently fails to open a tab. User must download from Stripe manually. **Cursor now has a way around this — see step 3.**
-- **Gmail MCP cannot send** — Can only create drafts. User must hit send.
-- **Gmail MCP attachments** — The API *does* accept attachments (base64, 25MB combined), so this is not a hard limit. It is impractical anyway: a ~400KB PDF is six figures of tokens to pass through context. Create the draft body, user attaches files.
-- **Expensify MCP is read-only** — Cannot set category, tag, create reports, or submit. **Use claude-in-chrome to drive the Expensify web UI instead** (see step 6); only the final Submit is left to the user. Use the MCP for verification, the browser for changes.
-- **Expensify search via MCP can blow the token limit** — An unfiltered `Search` returns ~100k characters and gets spilled to a file. Filter narrowly (`status:["unreported","drafts"]`) or post-process the spill file with jq.
-- **Cursor billing page** — Must be the active/focused tab to load.
-- **SmartScan auto-categorizes** — It sets Category to `Software subscription/Licenses`, which is *not* the required `General Allowance: Software Subscription/Licenses`, and leaves Tag empty. Always tell the user to set both explicitly; do not assume the auto-value is correct.
+- **Downloads**: Claude can download PDFs itself (verified Sep 2026 on the OpenAI Stripe page) as long as the Chrome download setting above is off. Clicking an OpenAI transaction row opens its Stripe invoice page in the Claude tab group; clicking **Download receipt** there saves `Receipt-<number>.pdf` straight to `~/Downloads`.
+  - **After every download click, check `ls -lt ~/Downloads | head` within about 5 seconds.** If no new file appears, don't click again: each extra click queues another save dialog and later produces duplicate `(1)`, `(2)` copies.
+  - **Troubleshoot with computer use.** Call `request_access` for Google Chrome (browsers are granted read-only; that is enough) and take a screenshot. A save sheet reading "<host> wants to save" means the setting was turned back on. Claude can't click it (read-only tier, and never work around that with AppleScript or keystrokes). Ask the user to click **Save** and to turn the setting off again.
+  - If there's no dialog and no file, ask the user to click the download button themselves and note what happened here.
+- **Expensify MCP is read-only**: cannot set category, tag, create reports, or submit. Use claude-in-chrome for changes; only the final Submit is left to the user.
+- **Cursor billing page**: must be the active/focused tab to load. The month dropdown does not open when clicked by element ref; click it by screen coordinate from a screenshot.
+- **Cursor login redirect**: in Sep 2026 an expired Cursor session redirected to a sign-in page on `accounts.x.ai` ("SpaceXAI Accounts", showing "Log into your Cursor account"). Do not log in; tell the user, suggest they type `cursor.com` themselves, and wait.
+- **OpenAI transaction history lags**: on the billing day the plan can already show the next renewal date while the new charge is not yet in the transaction list. Treat an unlisted charge as not billed yet and push it to next month.
+- **SmartScan auto-categorizes**: it sets Category to `Software subscription/Licenses`, which is *not* the required `General Allowance: Software Subscription/Licenses`, and leaves Tag empty. Step 6 fixes both; never assume the auto-value is right.
+- **Cursor PDFs are invoices, not receipts**: they say "Amount due" rather than "Paid". The billing page shows them as Paid, and approvers have accepted them.
 
 ---
 
@@ -49,100 +71,100 @@ The user must:
 
 ### 0. Determine which months are actually outstanding (do this FIRST)
 
-**Never assume the user only needs the current month.** They miss months, and the ask ("expense my AI subscriptions") usually won't mention it. Before touching any vendor, find the last AI subscription expense already in Expensify:
+**Never assume the user only needs the current month.** They miss months, and the ask ("expense my AI subscriptions") usually won't mention it. Find the newest AI subscription expense already in Expensify with a narrow keyword search (small enough to read inline):
 
 ```json
-{"type":"expense","status":"all","sortBy":"date","sortOrder":"desc","shouldCalculateTotals":true,"filters":null}
+{"type":"expense","status":"all","sortBy":"date","sortOrder":"desc","shouldCalculateTotals":true,
+ "filters":{"operator":"and",
+   "left":{"operator":"gte","left":"date","right":"<about 4 months ago, YYYY-MM-DD>"},
+   "right":{"operator":"eq","left":"keyword","right":["Anthropic","OpenAI","Cursor","Claude","ChatGPT"]}}}
 ```
 
-An unfiltered search can exceed the token limit and get written to a file — extract just what you need with jq rather than reading it whole:
+Use `modifiedCreated` / `modifiedMerchant` / `modifiedAmount` (cents, negative). The report names and states tell you what's already submitted or approved. Everything after the newest Anthropic/OpenAI/Cursor row is outstanding, including anything unreported that the user already emailed in.
 
+Work out which invoices should exist from the billing cycles (Cursor 16th, Anthropic ~27th, OpenAI ~29th). If more than one month is outstanding, ask whether they want one combined report or one per month. If an invoice is due today or tomorrow, ask whether to include it if it's already billed or leave it for next month.
+
+### 1. Gather the expected invoices (Claude, no user action)
+
+Do all three before involving the user.
+
+**Anthropic** (email receipts, PDFs attached):
 ```
-jq -r '[.data | to_entries[] | select(.key|startswith("transactions_")) | .value
-        | {date:(.modifiedCreated // .created), merchant:(.modifiedMerchant // .merchant), amount:(.modifiedAmount // .amount)}]
-       | sort_by(.date) | reverse | .[:25][] | "\(.date)  \(.amount)  \(.merchant)"' <file>
+gog -a personal gmail search 'from:invoice+statements@mail.anthropic.com subject:receipt after:<YYYY/MM/DD after last expensed>' --plain
+```
+Read each receipt's amount, date and receipt number from the body. Flag multiple receipts in one period (plan change, proration). Alternative source: `https://claude.ai/new#settings/billing`.
+
+**OpenAI** (no email receipts, [known gap](https://community.openai.com/t/email-receipts-to-billing-email-address/731689/67)):
+Navigate to `https://chatgpt.com/codex/cloud#settings/Billing`, wait for "Transaction history" to load, and read the rows (date, status, amount). Click "View all" if needed. The user may not have been subscribed continuously; trust the history, not the calendar.
+
+**Cursor** (no email receipts, [feature request](https://forum.cursor.com/t/ability-to-get-invoice-via-additional-email-address-es/112720)):
+Navigate to `https://cursor.com/dashboard/billing` (must be the active tab). In the **Invoices** section, use the month dropdown to read each target month's row (date, status, amount). Invoice #0001 is a $0.00 setup invoice; skip it.
+
+### 2. One confirmation from the user
+
+Present a single table of every expected invoice (vendor, date, amount, source) with the total, and in the same message ask the user to:
+1. OpenAI PDFs are Claude's job: click each OpenAI row, then **Download receipt** on the Stripe page it opens (see "Downloads" under Known limitations). Only ask the user if that fails.
+2. Download the Cursor PDFs (until Claude has verified it can do this too): **Download** dropdown → a single month (e.g. "August 2026") per month, or **All invoices** for a zip of everything.
+3. Confirm the list. Their yes authorizes Claude to send the forwards and the PDF email listed in the table, and nothing else.
+
+The user does not need to give file paths.
+
+### 3. Find and verify the PDFs (Claude)
+
+Look in `~/Downloads` for the newest files:
+- OpenAI: `Receipt-*.pdf` (and `Invoice-*.pdf`)
+- Cursor: folders `cursor-invoices-personal-<from>-to-<to>/` containing `cursor-invoice-<YYYY-MM-DD>-*.pdf`, or an extracted "All invoices" zip
+
+`Read` each candidate PDF and match it to the table by vendor, date and amount. Use only PDFs that match; if one is missing or doesn't match, ask the user rather than guessing.
+
+### 4. Email everything to Expensify (Claude, with gog)
+
+Dry run first (`-n`), check the output, then run for real.
+
+**Anthropic**: forward each receipt email. The original PDFs go along by default.
+```
+gog -a personal gmail forward <messageId> --to receipts@expensify.com --note "Anthropic Max plan, <date>, <amount>"
 ```
 
-Amounts are in cents and negative. Everything after the newest Anthropic/OpenAI/Cursor row is outstanding.
-
-Then work out which invoices should exist in that span from the billing cycles (Cursor 16th, Anthropic ~27th, OpenAI ~29th) and confirm each against the vendor. If more than one month is outstanding, tell the user and ask whether they want one combined report or one per month before creating any drafts.
-
-Ask the user for the expense month only if step 0 is ambiguous.
-
-### 1. Anthropic receipts (Claude assists, user sends)
-
-**Alternative source:** Invoices also at `https://claude.ai/new#settings/billing` (Stripe links).
-
-Search Gmail for receipts:
+**OpenAI and Cursor**: one email with all the PDFs attached.
 ```
-from:invoice+statements@mail.anthropic.com subject:receipt newer_than:45d
+gog -a personal gmail send --to receipts@expensify.com \
+  --subject "AI subscription invoices: <vendors and months>" \
+  --body "<one line per invoice: vendor, date, amount>" \
+  --attach <pdf1> --attach <pdf2> ...
 ```
 
-Show the user each receipt number, amount, and date. If they confirm, create a forwarding draft to `receipts@expensify.com` using `replyToMessageId` to include the original receipt content.
+Write subjects as plain text (use "and", not `&`). Confirm with `gog -a personal gmail search 'in:sent to:receipts@expensify.com newer_than:1d' --plain`.
 
-If there are multiple receipts in the period (e.g. mid-cycle plan change), flag all of them.
+If the user prefers to send themselves, create drafts instead (`gog gmail drafts create ... --attach`, or `gog gmail drafts forward`) and let them hit send.
 
-**User action:** Send the draft(s).
+### 5. Verify receipts landed (Claude)
 
-### 2. OpenAI invoice (Claude navigates, user downloads)
+SmartScan takes a few minutes. Search Expensify for `status:["unreported","drafts"]` expenses and confirm every expected receipt arrived with the right amount and merchant. Flag missing or duplicate entries. If one is still missing after about 5 minutes, re-send it.
 
-1. Navigate to `https://chatgpt.com/codex/cloud#settings/Billing`
-2. Locate the invoice for the target month (click "View all" if needed)
-3. Point user to the correct invoice link
+Re-check the OpenAI billing page here if a charge was pending in step 1.
 
-**Note:** OpenAI does not send email receipts ([known gap](https://community.openai.com/t/email-receipts-to-billing-email-address/731689/67)). The user may not have been subscribed continuously — check billing history rather than assuming monthly invoices exist.
+### 6. Categorize and build the report (Claude via claude-in-chrome; user submits)
 
-**User action:** Click the invoice link, download the PDF from the Stripe page.
-
-### 3. Cursor invoice (Claude navigates, user downloads)
-
-1. Navigate to `https://cursor.com/dashboard/billing` — **must be the active tab to load**
-2. Scroll to the **Invoices** section at the bottom. It has three controls: a `UTC` badge, a **month dropdown**, and a **Download** dropdown.
-3. **Preferred path — "Download all".** Open the **Download** dropdown and point the user at **"All invoices"**. This downloads a **zip of every Cursor invoice PDF**, straight from cursor.com, bypassing the blocked Stripe page entirely. One click covers any number of months, so it is strictly better than the per-month path when more than one month is outstanding.
-   - The user extracts the zip and picks out the invoices for the target month(s). Give them the **exact dates and amounts to look for** (from the month dropdown, see below) so they know which files to pull.
-   - The Download dropdown also offers a single-month option (e.g. "June 2026") if only one month is needed.
-4. **Confirm the expected invoices first.** Use the month dropdown to select each target month and read off the invoice row (date, status, amount). Do this *before* telling the user to download, so they can match files to expected values.
-5. Fallback: the per-row "View" link goes to Stripe and requires a manual download there.
-
-**Note:** Cursor does not send email receipts ([feature request](https://forum.cursor.com/t/ability-to-get-invoice-via-additional-email-address-es/112720)). Cursor bills on the 16th of each month. Invoice #0001 is a $0.00 setup invoice — skip it.
-
-**User action:** Download the zip via "All invoices", extract, and pull out the invoices for the target month(s).
-
-### 4. Get PDFs to Expensify (user emails)
-
-Create a Gmail draft to `receipts@expensify.com` with a subject describing the invoices, and list every expected invoice (vendor, date, amount) in the body so the user can check the attachments against it. The user attaches the downloaded OpenAI and Cursor PDFs and sends.
-
-**Write the subject as literal text — never HTML-escape it.** `create_draft` takes the subject raw, so passing `&amp;` produces a literal "&amp;" in the sent subject line. Use `&` (and `<`, `>`, `"`) directly. Simplest fix: avoid `&` in subjects and write "and".
-
-**User action:** Attach PDFs to draft, send.
-
-### 5. Verify receipts landed (Claude checks)
-
-Use the Expensify MCP to search for recent unreported expenses. Confirm all expected receipts arrived with correct amounts and merchants. Flag any missing or duplicate entries.
-
-### 6. Categorize and build the report (Claude does via claude-in-chrome; user submits)
-
-The Expensify MCP is read-only, but **the Chrome extension can drive the Expensify web UI** — Claude does everything up to Submit. Navigate to the unreported/drafts search:
+Navigate to the unreported/drafts search:
 
 `https://new.expensify.com/search?q=type%3Aexpense+status%3Aunreported%2Cdrafts+sortBy%3Adate+sortOrder%3Adesc`
 
 1. Dismiss any promo modal (a "Concierge AI" popup appears over the list).
-2. Tick the checkbox on **only** the AI subscription rows. Old unrelated unreported expenses live here too (stale Lyft/Uber/Alaska rows) — never use the select-all header checkbox. Confirm the footer reads the expected count and total before continuing.
+2. Tick the checkbox on **only** the AI subscription rows. Old unrelated unreported expenses live here too (stale Lyft/Uber/Alaska rows); never use the select-all header checkbox. Confirm the footer reads the expected count and total before continuing.
 3. **"N selected" dropdown → "Edit multiple"** → set both fields at once:
-   - **Category**: the list is hierarchical. Pick `Software Subscription/Licenses` **nested under the `General Allowance` header**, not the top-level `Software subscription/Licenses` (lowercase "s") that SmartScan auto-assigns. The panel then reads `General Allowance: Software Subscription/Lic…` — verify this before saving.
+   - **Category**: the list is hierarchical. Pick `Software Subscription/Licenses` **nested under the `General Allowance` header**, not the top-level `Software subscription/Licenses` (lowercase "s") that SmartScan auto-assigns. The panel then reads `General Allowance: Software Subscription/Lic…`; verify this before saving.
    - **Tag**: `AI Credit Allowance`
    - Click **Save**.
-4. Re-select the same rows → **"N selected" → "Move to report" → "Create report"** under the **FilOz** workspace. Check the workspace label; an unrelated draft report may also be listed.
-5. Open the new draft (sidebar **Drafts**), click the **pencil** next to the auto-generated title, and rename it (e.g. `June-July 2026 AI Subscriptions`). The default title ends in "(CHOOSE ONE)" and must be replaced.
+4. Re-select the same rows → **"N selected" → "Move to report" → "Create report"**. Open the "N selected" menu, wait a second, and click "Move to report" by its `find` ref: a coordinate click sent before the menu renders lands on a row and opens that expense's details instead (Escape closes it, and the selection survives) under the **FilOz** workspace. Check the workspace label; an unrelated draft report may also be listed.
+5. Open the new draft (sidebar **Drafts**), click the **pencil** next to the auto-generated title, and rename it (e.g. `August-September 2026 AI Subscriptions`). The default title ends in "(CHOOSE ONE)" and must be replaced.
 6. Verify the report: correct count, total, category and tag on every row, workspace = FilOz.
 
-**Expected violation:** expenses older than 30 days show a red "Date older than 30 days" flag and the report header says "Waiting for you to fix the issues". This is normal for any backfill and does not block submission — flag it to the user rather than trying to clear it.
+**Expected violation:** expenses older than 30 days show a red "Date older than 30 days" flag and the report header says "Waiting for you to fix the issues". This is normal for any backfill and does not block submission; tell the user rather than trying to clear it.
 
 **User action:** Review and hit **Submit**.
 
-**User action:** All of step 6.
-
-### 7. Final verification (Claude checks)
+### 7. Final verification (Claude)
 
 Use the Expensify MCP to confirm the report was submitted with the correct total, expense count, and workspace.
 
@@ -162,53 +184,43 @@ Use the Expensify MCP to confirm the report was submitted with the correct total
 
 | Error | What to do |
 |---|---|
-| Anthropic receipt not found in Gmail | Check if the billing date has passed. Search with broader date range. Check claude.ai billing page. |
+| Anthropic receipt not found in Gmail | Check if the billing date has passed. Search with a broader date range. Check the claude.ai billing page. |
 | OpenAI/Cursor billing page changed | Pause and describe the current UI. Update these instructions after resolving. |
-| Chrome not logged in | Remind user to log in via the dedicated Chrome profile. |
-| Receipt not appearing in Expensify | SmartScan can take a few minutes. Wait and re-check. If still missing after 5 min, try re-sending. |
-| Multiple receipts for one vendor | Flag to user — may indicate plan change, prorated charges, or API usage on top of subscription. |
-| Duplicate expense | Flag to user to delete in Expensify. Can happen if a receipt was forwarded twice. |
+| Vendor site logged out | Stop and ask the user to log in. Never enter credentials. |
+| gog account alias missing or auth expired | Ask the user; they may need `gog auth add` (interactive, suggest `! gog auth add ...`). |
+| Downloaded PDF doesn't match the expected invoice | Ask the user; don't send it. |
+| Receipt not appearing in Expensify | SmartScan can take a few minutes. Re-check. If still missing after 5 min, re-send. |
+| Multiple receipts for one vendor | Flag to user: may be a plan change, proration, or API usage on top of the subscription. |
+| Duplicate expense | Flag to user to delete in Expensify. Can happen if a receipt was sent twice. |
 
 ---
 
 ## Upstream feature requests to monitor
 
-These vendor feature requests would eliminate the manual PDF download steps if implemented. Check periodically.
+If either lands, the user's last download step for that vendor goes away: switch it to Gmail search plus `gog gmail forward`, like Anthropic.
 
-| Vendor | Request | URL | Impact if resolved |
-|--------|---------|-----|-------------------|
-| OpenAI | Email receipts to billing email | https://community.openai.com/t/email-receipts-to-billing-email-address/731689/67 | Switch to Gmail forwarding like Anthropic — no browser needed |
-| Cursor | Email invoices to additional address | https://forum.cursor.com/t/ability-to-get-invoice-via-additional-email-address-es/112720 | Switch to Gmail forwarding like Anthropic — no browser needed |
-
-If either vendor starts sending email receipts, update the workflow to use Gmail search + forwarding (same as Anthropic) and remove the browser download steps.
+| Vendor | Request | URL |
+|--------|---------|-----|
+| OpenAI | Email receipts to billing email | https://community.openai.com/t/email-receipts-to-billing-email-address/731689/67 |
+| Cursor | Email invoices to additional address | https://forum.cursor.com/t/ability-to-get-invoice-via-additional-email-address-es/112720 |
 
 ---
 
 ## Default posture: always improve
 
-This workflow has significant manual friction. Every run should actively look for ways to reduce it. Don't just execute the steps — question whether each manual step is still necessary.
+Every run should remove some manual effort. Don't just execute the steps; question whether each manual step is still necessary.
 
 ### After every run
 
-1. **Identify friction** — What took the most user effort? What felt clunky? Call it out explicitly to the user at the end of the session: "Here's what I think we could improve next time..."
-
-2. **Test assumptions** — Re-check each known limitation. Things change:
-   - Does the Chrome extension still block `invoice.stripe.com`? Try it.
-   - Does the Expensify MCP still lack write access? Check the tool list.
-   - Has any vendor started sending email receipts? Search Gmail.
-   - Can Gmail MCP send now (not just draft)?
-   - Has the attachment size limit changed?
-
-3. **Update this skill** — If anything changed, edit this file directly. Don't suggest changes — make them. If a limitation was resolved, remove it and update the workflow to use the new capability.
-
-4. **Suggest improvements to the user** — Proactively recommend things like:
-   - "Should we set up a monthly reminder/schedule so these don't pile up?"
-   - "Vendor X now offers email receipts — want me to switch to that?"
-   - "I noticed a new AI subscription on your credit card — should we add it?"
-   - "The Expensify MCP can do X now — next time I can handle that step."
-
-5. **Watch for new subscriptions** — Check the credit card spreadsheet or Expensify for new AI/software vendors not yet in this workflow.
+1. **Identify friction**: tell the user what took the most effort and what could be better next time.
+2. **Test assumptions** that could remove a user step:
+   - Can Claude trigger Cursor's **Download** menu (single month) itself now that downloads go straight to `~/Downloads`?
+   - Can Claude trigger Cursor's **Download** itself and find the file in `~/Downloads`?
+   - Does the Expensify MCP have write access now (check the tool list)?
+   - Has either vendor started sending email receipts (search Gmail)?
+3. **Update this skill** directly when something changed. Don't just suggest it.
+4. **Suggest improvements**, e.g. a monthly reminder so months don't pile up, or new AI subscriptions spotted on the card or in Expensify.
 
 ### Aspirational goal
 
-The ideal end state is: user says "expense my AI tools for June" and Claude handles everything end-to-end with a single confirmation before submit. Each run should move closer to that.
+The user says "expense my AI tools" and Claude handles everything end to end, with one confirmation before sending and the user's Submit at the end.
